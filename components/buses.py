@@ -1,6 +1,6 @@
 import streamlit as st
 import flixopt as fx
-from utils.session_state import add_component
+from utils.session_state import add_element, delete_element
 
 def create_bus_ui():
     """UI for creating and managing buses"""
@@ -30,7 +30,7 @@ def create_bus_ui():
                 bus_name,
                 excess_penalty_per_flow_hour=bus_excess_penalty
             )
-            success, message = add_component(new_bus, 'buses')
+            success, message = add_element(new_bus, 'buses')
 
             if success:
                 st.success(message)
@@ -42,7 +42,7 @@ def create_bus_ui():
 
 def display_existing_buses():
     """Display the list of existing buses"""
-    if not st.session_state.components['buses']:
+    if not st.session_state.elements['buses']:
         return
 
     st.write("Current Buses:")
@@ -53,42 +53,12 @@ def display_existing_buses():
     cols[1].write("**Excess Penalty**")
     cols[2].write("**Actions**")
 
-    for i, bus in enumerate(st.session_state.components['buses']):
+    for i, bus in enumerate(st.session_state.flow_system.buses.values()):
         cols = st.columns([3, 1, 1])
-        cols[0].write(bus.label)
+        cols[0].write(bus.label_full)
         cols[1].write(f"{bus.excess_penalty_per_flow_hour:.1e}")
 
         # Action buttons
-        if cols[2].button("Delete", key=f"delete_bus_{i}"):
-            delete_bus(i)
+        if cols[2].button("Delete", key=f"delete_bus_{bus.label_full}"):
+            delete_element(bus.label_full, 'buses')
             st.rerun()
-
-def delete_bus(index):
-    """Delete a bus from the system"""
-    try:
-        # Before deleting, check if the bus is in use
-        bus_to_delete = st.session_state.components['buses'][index]
-
-        # Check if bus is in use by any component
-        in_use = False
-        usage = []
-
-        for component_type in ['converters', 'storages', 'sources', 'sinks']:
-            for component in st.session_state.components[component_type]:
-                if hasattr(component, 'flow'):
-                    for flow in component.flow:
-                        if hasattr(flow, 'bus') and flow.bus == bus_to_delete.label:
-                            in_use = True
-                            usage.append(f"{component.label} ({flow.label})")
-
-        if in_use:
-            st.error(f"Cannot delete bus '{bus_to_delete.label}' as it is used by: {', '.join(usage)}")
-            return False
-
-        # If not in use, remove it
-        st.session_state.flow_system.remove_elements(bus_to_delete)
-        st.session_state.components['buses'].pop(index)
-        return True
-    except Exception as e:
-        st.error(f"Error deleting bus: {str(e)}")
-        return False

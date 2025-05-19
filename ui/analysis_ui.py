@@ -8,7 +8,7 @@ def render_analysis_tab():
     st.header("Advanced Analysis")
 
     # Check if results are available
-    if st.session_state.calculation_results is None:
+    if st.session_state.results is None:
         st.warning("Please run the optimization first to perform advanced analysis.")
         return
 
@@ -77,7 +77,7 @@ def render_load_duration_curves():
     """)
 
     # Select bus to analyze
-    if not st.session_state.components['buses']:
+    if not st.session_state.elements['buses']:
         st.warning("No buses available for analysis.")
         return
 
@@ -88,11 +88,11 @@ def render_load_duration_curves():
 
     try:
         # Get all flows connected to this bus
-        results = st.session_state.calculation_results
+        results = st.session_state.results
         flow_data = {}
 
         # Collect all flows from sources to this bus (positive)
-        for source in st.session_state.components['sources']:
+        for source in st.session_state.elements['sources']:
             if source.source.bus == selected_bus:
                 flow_key = f"{source.label}({source.source.label})|flow_rate"
                 try:
@@ -195,15 +195,15 @@ def render_component_utilization():
 def render_converter_utilization():
     """Render converter utilization analysis"""
     # Check if converters exist
-    if not st.session_state.components['converters']:
+    if not st.session_state.elements['converters']:
         st.warning("No converters available for analysis.")
         return
 
-    results = st.session_state.calculation_results
+    results = st.session_state.results
     utilization_data = []
 
     # Calculate utilization for each converter
-    for converter in st.session_state.components['converters']:
+    for converter in st.session_state.elements['converters']:
         # Find the primary output flow
         main_flow = None
         for flow in converter.flow:
@@ -270,15 +270,15 @@ def render_converter_utilization():
 def render_storage_utilization():
     """Render storage utilization analysis"""
     # Check if storage systems exist
-    if not st.session_state.components['storages']:
+    if not st.session_state.elements['storages']:
         st.warning("No storage systems available for analysis.")
         return
 
-    results = st.session_state.calculation_results
+    results = st.session_state.results
     utilization_data = []
 
     # Calculate utilization for each storage system
-    for storage in st.session_state.components['storages']:
+    for storage in st.session_state.elements['storages']:
         try:
             # Get charge state
             charge_state = results[storage.label].charge_state
@@ -345,7 +345,7 @@ def render_emissions_analysis():
     has_emissions = False
     emissions_effects = []
 
-    for effect in st.session_state.components['effects']:
+    for effect in st.session_state.elements['effects']:
         if "emission" in effect.label.lower() or "co2" in effect.label.lower():
             has_emissions = True
             emissions_effects.append(effect.label)
@@ -360,7 +360,7 @@ def render_emissions_analysis():
         emissions_effects
     )
 
-    results = st.session_state.calculation_results
+    results = st.session_state.results
 
     try:
         # Calculate total emissions
@@ -370,7 +370,7 @@ def render_emissions_analysis():
         emissions_by_component = {}
 
         for component_type in ['converters', 'storages', 'sources', 'sinks']:
-            for component in st.session_state.components[component_type]:
+            for component in st.session_state.elements[component_type]:
                 try:
                     emissions = results.get_total_effect_for_component(
                         selected_effect,
@@ -398,7 +398,7 @@ def render_emissions_analysis():
             # Add component type
             df['Type'] = df['Component'].apply(
                 lambda x: next(
-                    (type(c).__name__ for k, v in st.session_state.components.items()
+                    (type(c).__name__ for k, v in st.session_state.elements.items()
                      for c in v if c.label == x),
                     'Other'
                 )
@@ -435,7 +435,7 @@ def render_cost_breakdown():
     has_costs = False
     cost_effects = []
 
-    for effect in st.session_state.components['effects']:
+    for effect in st.session_state.elements['effects']:
         if "cost" in effect.label.lower() or "euro" in effect.label.lower() or "€" in effect.label.lower():
             has_costs = True
             cost_effects.append(effect.label)
@@ -450,7 +450,7 @@ def render_cost_breakdown():
         cost_effects
     )
 
-    results = st.session_state.calculation_results
+    results = st.session_state.results
 
     try:
         # Calculate total costs
@@ -460,7 +460,7 @@ def render_cost_breakdown():
         costs_by_component = {}
 
         for component_type in ['converters', 'storages', 'sources', 'sinks']:
-            for component in st.session_state.components[component_type]:
+            for component in st.session_state.elements[component_type]:
                 try:
                     costs = results.get_total_effect_for_component(
                         selected_effect,
@@ -488,7 +488,7 @@ def render_cost_breakdown():
             # Add component type
             df['Type'] = df['Component'].apply(
                 lambda x: next(
-                    (type(c).__name__ for k, v in st.session_state.components.items()
+                    (type(c).__name__ for k, v in st.session_state.elements.items()
                      for c in v if c.label == x),
                     'Other'
                 )

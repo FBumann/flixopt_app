@@ -14,17 +14,17 @@ def render_results_tab():
     """Render the Results tab UI"""
     st.header("Results Visualization")
 
-    if st.session_state.calculation_results is None:
+    if st.session_state.results is None:
         st.warning("Please run the optimization first to see results.")
         return
 
-    results = st.session_state.calculation_results
+    results = st.session_state.results
 
     # Key Performance Indicators
     st.subheader("Key Performance Indicators")
 
     # Extract objective values
-    objective_effects = [effect for effect in st.session_state.components['effects'] if effect.is_objective]
+    objective_effects = [effect for effect in st.session_state.elements['effects'] if effect.is_objective]
     if objective_effects:
         objective_values = {}
         for effect in objective_effects:
@@ -63,7 +63,7 @@ def render_results_tab():
 def render_bus_visualization(results):
     """Render visualization for buses"""
     # Bus balance visualization
-    if st.session_state.components['buses']:
+    if st.session_state.elements['buses']:
         selected_bus = st.selectbox(
             "Select Bus",
             list(st.session_state.flow_system.buses)
@@ -102,7 +102,7 @@ def render_bus_visualization(results):
                 # Get flows for the selected bus
                 component_flows = []
                 for component_type in ['converters', 'storages', 'sources', 'sinks']:
-                    for component in st.session_state.components[component_type]:
+                    for component in st.session_state.elements[component_type]:
                         for flow in component.flow:
                             if hasattr(flow, 'bus') and flow.bus == selected_bus:
                                 component_flows.append(
@@ -131,9 +131,9 @@ def render_bus_visualization(results):
 def render_converter_visualization(results):
     """Render visualization for converters"""
     # Converter visualization
-    if st.session_state.components['converters']:
+    if st.session_state.elements['converters']:
         converter_options = [
-            conv.label for conv in st.session_state.components['converters']
+            conv.label for conv in st.session_state.elements['converters']
         ]
         selected_converter = st.selectbox("Select Converter", converter_options)
 
@@ -158,7 +158,7 @@ def render_converter_visualization(results):
             elif converter_viz_type == "Flow Rates Heatmap":
                 # Get converter flows
                 converter = next(
-                    (c for c in st.session_state.components['converters']
+                    (c for c in st.session_state.elements['converters']
                      if c.label == selected_converter),
                     None
                 )
@@ -190,9 +190,9 @@ def render_converter_visualization(results):
 def render_storage_visualization(results):
     """Render visualization for storage systems"""
     # Storage visualization
-    if st.session_state.components['storages']:
+    if st.session_state.elements['storages']:
         storage_options = [
-            storage.label for storage in st.session_state.components['storages']
+            storage.label for storage in st.session_state.elements['storages']
         ]
         selected_storage = st.selectbox("Select Storage", storage_options)
 
@@ -210,7 +210,7 @@ def render_storage_visualization(results):
             # Show additional storage metrics
             try:
                 storage = next(
-                    (s for s in st.session_state.components['storages']
+                    (s for s in st.session_state.elements['storages']
                      if s.label == selected_storage),
                     None
                 )
@@ -246,7 +246,7 @@ def render_system_visualization(results):
         component_energy = {}
 
         # Process converters
-        for converter in st.session_state.components['converters']:
+        for converter in st.session_state.elements['converters']:
             component_energy[converter.label] = 0
             for flow in converter.flow:
                 if hasattr(flow, 'is_input') and flow.is_input:
@@ -261,14 +261,14 @@ def render_system_visualization(results):
                         component_energy[converter.label] += flow_rates.sum()
 
         # Process sources (always positive contribution)
-        for source in st.session_state.components['sources']:
+        for source in st.session_state.elements['sources']:
             source_flow = source.source
             flow_rates = results[source.label][source_flow.label].flow_rate
             if flow_rates is not None:
                 component_energy[source.label] = flow_rates.sum()
 
         # Process sinks (always negative contribution)
-        for sink in st.session_state.components['sinks']:
+        for sink in st.session_state.elements['sinks']:
             sink_flow = sink.sink
             flow_rates = results[sink.label][sink_flow.label].flow_rate
             if flow_rates is not None:
@@ -282,7 +282,7 @@ def render_system_visualization(results):
 
         df['Type'] = df['Component'].apply(
             lambda x: next(
-                (k for k, v in st.session_state.components.items()
+                (k for k, v in st.session_state.elements.items()
                  if any(c.label == x for c in v)),
                 'Other'
             )
@@ -315,12 +315,12 @@ def render_system_visualization(results):
         effect_data = []
 
         # Loop through effect types
-        for effect in st.session_state.components['effects']:
+        for effect in st.session_state.elements['effects']:
             effect_label = effect.label
 
             # Process all components for this effect
             for component_type in ['converters', 'storages', 'sources', 'sinks']:
-                for component in st.session_state.components[component_type]:
+                for component in st.session_state.elements[component_type]:
                     component_label = component.label
                     component_type_label = type_mapping.get(
                         component_type,
@@ -362,7 +362,7 @@ def render_system_visualization(results):
                 color='Type',
                 title=f'{selected_effect} Distribution by Component',
                 labels={
-                    'Value': f"{selected_effect} ({next((e.unit for e in st.session_state.components['effects'] if e.label == selected_effect), '')})"
+                    'Value': f"{selected_effect} ({next((e.unit for e in st.session_state.elements['effects'] if e.label == selected_effect), '')})"
                 }
             )
             st.plotly_chart(fig, use_container_width=True)
@@ -401,7 +401,7 @@ def render_export_section(results):
 
                         # Collect flow rates from all components
                         for component_type in ['converters', 'storages', 'sources', 'sinks']:
-                            for component in st.session_state.components[component_type]:
+                            for component in st.session_state.elements[component_type]:
                                 for flow in component.flow:
                                     flow_key = f"{component.label}({flow.label})|flow_rate"
                                     try:
@@ -437,12 +437,12 @@ def render_export_section(results):
                         # Collect total effects for all components
                         effects_data = {}
 
-                        for effect in st.session_state.components['effects']:
+                        for effect in st.session_state.elements['effects']:
                             effect_label = effect.label
                             effects_data[effect_label] = {}
 
                             for component_type in ['converters', 'storages', 'sources', 'sinks']:
-                                for component in st.session_state.components[component_type]:
+                                for component in st.session_state.elements[component_type]:
                                     try:
                                         effect_value = results.get_total_effect_for_component(
                                             effect_label, component.label
@@ -482,11 +482,11 @@ def render_export_section(results):
                                 files_to_export.append(file_path)
 
                     # Export storage states
-                    if export_storage and st.session_state.components['storages']:
+                    if export_storage and st.session_state.elements['storages']:
                         storage_data = {}
 
                         # Collect charge states for all storage components
-                        for storage in st.session_state.components['storages']:
+                        for storage in st.session_state.elements['storages']:
                             try:
                                 charge_state = results[storage.label].charge_state
                                 if charge_state is not None:
@@ -573,7 +573,7 @@ def render_export_section(results):
                 }
 
                 # Save component configurations
-                for component_type, components in st.session_state.components.items():
+                for component_type, components in st.session_state.elements.items():
                     model_config["components"][component_type] = []
 
                     for component in components:

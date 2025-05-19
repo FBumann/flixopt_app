@@ -3,185 +3,471 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 
-def time_profile_editor(timesteps, key_prefix="profile", default_value=1.0,
-                        title="Time Profile", show_preview=True, in_form=True):
+def time_profile_editor(key_prefix="data", initial_data=None, columns=None, index=None, num_rows=5):
     """
-    Reusable time profile editor component that works inside forms.
+    Interactive data editor component that works with forms.
 
     Parameters:
     -----------
-    timesteps : pandas.DatetimeIndex
-        The timesteps for which the profile should be created
     key_prefix : str
         Prefix for unique Streamlit widget keys
-    default_value : float
-        Default value for the profile points
-    title : str
-        Title for the profile section
-    show_preview : bool
-        Whether to show a preview chart of the profile
-    in_form : bool
-        Whether this component is being used inside a form
+    initial_data : pandas.DataFrame or None
+        Initial data to populate the editor
+    columns : list or None
+        Column names for the dataframe
+    index : list or None
+        Index values for the dataframe
+    num_rows : int
+        Number of rows to show when creating a new dataframe
 
     Returns:
     --------
-    numpy.ndarray or None
-        The created profile values
+    pandas.DataFrame
+        The edited dataframe
     """
-    if timesteps is None or len(timesteps) == 0:
-        st.warning("No timesteps available. Please initialize the system first.")
-        return None
+    # Initialize state variables
+    data_key = f"{key_prefix}_dataframe"
+    editor_tab_key = f"{key_prefix}_editor_tab"
 
-    # Initialize session state for this profile editor instance
-    profile_key = f"{key_prefix}_profile_data"
-    use_profile_key = f"{key_prefix}_use"
-    profile_type_key = f"{key_prefix}_type"
+    # Initialize default data if needed
+    if initial_data is None:
+        if columns is None:
+            columns = ["Value"]
 
-    # Initialize session state variables if they don't exist
-    if profile_key not in st.session_state:
-        st.session_state[profile_key] = np.ones(len(timesteps)) * default_value
-    if use_profile_key not in st.session_state:
-        st.session_state[use_profile_key] = False
-    if profile_type_key not in st.session_state:
-        st.session_state[profile_type_key] = "Constant"
+        if index is None:
+            index = [f"Row {i+1}" for i in range(num_rows)]
 
-    # Create UI
-    st.subheader(title)
-    use_profile = st.checkbox("Use Time-Dependent Profile",
-                              value=st.session_state[use_profile_key],
-                              key=use_profile_key)
+        initial_data = pd.DataFrame(
+            [[0.0] * len(columns) for _ in range(len(index))],
+            columns=columns,
+            index=index
+        )
 
-    if not use_profile:
-        return None
+    # Initialize session state
+    if data_key not in st.session_state:
+        st.session_state[data_key] = initial_data.copy()
 
-    profile_type = st.selectbox("Profile Type",
-                                ["Constant", "Sinusoidal", "Manual Entry"],
-                                key=profile_type_key)
+    if editor_tab_key not in st.session_state:
+        st.session_state[editor_tab_key] = "Table"
 
-    # Handle the different profile types
-    if profile_type == "Constant":
-        # Define callback to update profile when value changes
-        def update_constant(value):
-            st.session_state[profile_key] = np.ones(len(timesteps)) * value
+    # Create the UI
+    tab1, tab2 = st.tabs(["Table Editor", "Chart View"])
 
-        profile_value = st.number_input("Constant Value",
-                                        min_value=0.0,
-                                        max_value=1.0,
-                                        value=default_value,
-                                        key=f"{key_prefix}_constant",
-                                        on_change=update_constant if not in_form else None,
-                                        args=[] if in_form else [st.session_state[f"{key_prefix}_constant"]])
+    with tab1:
+        # Data editor - supports both viewing and editing
+        edited_df = st.data_editor(
+            st.session_state[data_key],
+            key=f"{key_prefix}_editor",
+            num_rows="dynamic",
+            use_container_width=True,
+            hide_index=False
+        )
 
-        if in_form:
-            st.session_state[profile_key] = np.ones(len(timesteps)) * profile_value
+        # Store the edited data back to session state
+        st.session_state[data_key] = edited_df
 
-    elif profile_type == "Sinusoidal":
-        # Store parameters in session state
-        for param in ["amplitude", "periods", "offset", "phase"]:
-            if f"{key_prefix}_{param}" not in st.session_state:
-                default_vals = {"amplitude": 0.5, "periods": 1, "offset": 0.5, "phase": 0.0}
-                st.session_state[f"{key_prefix}_{param}"] = default_vals.get(param, 0.5)
+    with tab2:
+        # Chart view of the current data
+        if not st.session_state[data_key].empty:
+            try:
+                # Create appropriate visualization based on the data
+                if len(st.session_state[data_key].columns) == 1:
+                    # Single column - bar or line chart
+                    chart_type = st.radio(
+                        "Chart Type",
+                        options=["Line", "Bar"],
+                        horizontal=True,
+                        key=f"{key_prefix}_chart_type"
+                    )
 
-        col1, col2 = st.columns(2)
-        with col1:
-            amplitude = st.slider("Amplitude",
-                                  min_value=0.0,
-                                  max_value=1.0,
-                                  value=st.session_state[f"{key_prefix}_amplitude"],
-                                  step=0.01,
-                                  key=f"{key_prefix}_amplitude")
-            periods = st.slider("Periods",
-                                min_value=1,
-                                max_value=5,
-                                value=st.session_state[f"{key_prefix}_periods"],
-                                key=f"{key_prefix}_periods")
-        with col2:
-            offset = st.slider("Offset",
-                               min_value=0.0,
-                               max_value=1.0,
-                               value=st.session_state[f"{key_prefix}_offset"],
-                               step=0.01,
-                               key=f"{key_prefix}_offset")
-            phase = st.slider("Phase Shift",
-                              min_value=0.0,
-                              max_value=2*np.pi,
-                              value=st.session_state[f"{key_prefix}_phase"],
-                              step=0.1,
-                              key=f"{key_prefix}_phase")
+                    if chart_type == "Line":
+                        st.line_chart(st.session_state[data_key], use_container_width=True)
+                    else:
+                        st.bar_chart(st.session_state[data_key], use_container_width=True)
+                else:
+                    # Multiple columns - allow selection of x and y
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        x_column = st.selectbox(
+                            "X-axis",
+                            options=[None] + list(st.session_state[data_key].columns),
+                            key=f"{key_prefix}_x_column"
+                        )
+                    with col2:
+                        y_columns = st.multiselect(
+                            "Y-axis",
+                            options=list(st.session_state[data_key].columns),
+                            default=[st.session_state[data_key].columns[0]],
+                            key=f"{key_prefix}_y_columns"
+                        )
 
-        # Update the profile data
-        t = np.linspace(0, 2*np.pi*periods, len(timesteps))
-        st.session_state[profile_key] = offset + amplitude * np.sin(t + phase)
+                    if x_column and y_columns:
+                        # Use Plotly for more advanced charts
+                        fig = px.line(
+                            st.session_state[data_key],
+                            x=x_column,
+                            y=y_columns,
+                            markers=True
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.info("Please select columns for X and Y axes")
+            except Exception as e:
+                st.error(f"Error generating chart: {str(e)}")
 
-    else:  # Manual Entry
-        st.write("Enter values for each time step:")
+    # Add export/import options
+    st.write("Import/Export Options:")
+    col1, col2 = st.columns(2)
 
-        # Option to upload CSV or Excel file with profile data
-        st.write("Or upload a file with profile data:")
-        uploaded_file = st.file_uploader("Upload CSV or Excel",
-                                         type=["csv", "xlsx", "xls"],
-                                         key=f"{key_prefix}_upload")
+    with col1:
+        # Export button
+        csv = st.session_state[data_key].to_csv().encode('utf-8')
+        st.download_button(
+            "Download CSV",
+            data=csv,
+            file_name=f"{key_prefix}_data.csv",
+            mime="text/csv",
+            key=f"{key_prefix}_download"
+        )
+
+    with col2:
+        # Import button
+        uploaded_file = st.file_uploader(
+            "Upload CSV or Excel",
+            type=["csv", "xlsx", "xls"],
+            key=f"{key_prefix}_upload"
+        )
 
         if uploaded_file is not None:
             try:
                 if uploaded_file.name.endswith('.csv'):
-                    profile_data = pd.read_csv(uploaded_file, index_col=0)
+                    imported_data = pd.read_csv(uploaded_file, index_col=0)
                 else:
-                    profile_data = pd.read_excel(uploaded_file, index_col=0)
+                    imported_data = pd.read_excel(uploaded_file, index_col=0)
 
-                # Try to match with timesteps
-                if profile_data.shape[0] >= len(timesteps):
-                    st.session_state[profile_key] = profile_data.iloc[:len(timesteps), 0].values
-                    st.success(f"Loaded profile with {len(st.session_state[profile_key])} values.")
-                else:
-                    st.warning(f"Uploaded profile has only {profile_data.shape[0]} values, but {len(timesteps)} are needed.")
+                st.session_state[data_key] = imported_data
+                st.success(f"Loaded data with {imported_data.shape[0]} rows and {imported_data.shape[1]} columns")
+                st.rerun()
             except Exception as e:
-                st.error(f"Error loading profile: {str(e)}")
-        else:
-            # Show a sample of time steps for manual entry
-            max_display = min(24, len(timesteps))  # Limit number displayed for usability
+                st.error(f"Error importing data: {str(e)}")
 
-            # Initialize individual time point values if not present
-            for i in range(max_display):
-                manual_key = f"{key_prefix}_manual_{i}"
-                if manual_key not in st.session_state:
-                    st.session_state[manual_key] = default_value
+    # Return the current data
+    return st.session_state[data_key]
 
-            # Show manual entry fields
-            for i in range(max_display):
-                manual_key = f"{key_prefix}_manual_{i}"
+def smart_numeric_input(label, key, default_value=0.0, description=None, timesteps=None):
+    """
+    Smart numeric input component that allows switching between single value and time series.
 
-                def update_point(i, value):
-                    profile = st.session_state[profile_key].copy()
-                    profile[i] = value
-                    st.session_state[profile_key] = profile
+    Parameters:
+    -----------
+    label : str
+        Label for the input field
+    key : str
+        Unique key for the session state
+    default_value : float
+        Default value for single input mode
+    description : str or None
+        Optional description to show below the input
+    timesteps : pandas.DatetimeIndex or None
+        Timesteps for time series data if applicable
 
-                value = st.number_input(
-                    f"Value at {timesteps[i]}",
-                    min_value=0.0,
-                    max_value=1.0,
-                    value=st.session_state[manual_key],
-                    key=manual_key
+    Returns:
+    --------
+    float or numpy.ndarray
+        Single value or array of values
+    """
+    # Initialize session state
+    if f"{key}_mode" not in st.session_state:
+        st.session_state[f"{key}_mode"] = "single"
+
+    if f"{key}_value" not in st.session_state:
+        st.session_state[f"{key}_value"] = default_value
+
+    if f"{key}_series" not in st.session_state and timesteps is not None:
+        st.session_state[f"{key}_series"] = pd.DataFrame(
+            {"Value": [default_value] * len(timesteps)},
+            index=timesteps
+        )
+
+    # Create UI
+    st.write(f"### {label}")
+    if description:
+        st.write(description)
+
+    # Mode selector
+    if timesteps is not None:
+        input_mode = st.radio(
+            "Input Type",
+            options=["Single Value", "Time Series"],
+            horizontal=True,
+            key=f"{key}_mode_selector",
+            index=0 if st.session_state[f"{key}_mode"] == "single" else 1
+        )
+    else:
+        input_mode = "Single Value"
+
+    # Update mode in session state
+    st.session_state[f"{key}_mode"] = "single" if input_mode == "Single Value" else "series"
+
+    # Show appropriate input based on mode
+    if st.session_state[f"{key}_mode"] == "single":
+        value = st.number_input(
+            "Value",
+            value=st.session_state[f"{key}_value"],
+            key=f"{key}_value_input"
+        )
+        st.session_state[f"{key}_value"] = value
+        return value
+    else:
+        # Time series input
+        tabs = st.tabs(["Table Editor", "Chart View", "Presets"])
+
+        with tabs[0]:
+            # Table editor
+            series_df = st.data_editor(
+                st.session_state[f"{key}_series"],
+                use_container_width=True,
+                num_rows="fixed",
+                key=f"{key}_series_editor"
+            )
+            st.session_state[f"{key}_series"] = series_df
+
+        with tabs[1]:
+            # Chart view
+            fig = px.line(
+                series_df,
+                y="Value",
+                labels={"index": "Time", "Value": f"{label} Value"}
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        with tabs[2]:
+            # Preset patterns
+            preset = st.selectbox(
+                "Select Pattern",
+                options=["Constant", "Sinusoidal", "Linear Ramp", "Step Function"],
+                key=f"{key}_preset"
+            )
+
+            if preset == "Constant":
+                const_value = st.number_input(
+                    "Constant Value",
+                    value=default_value,
+                    key=f"{key}_preset_constant"
                 )
 
-                # Update the profile in session state
-                if in_form:
-                    temp_profile = st.session_state[profile_key].copy()
-                    temp_profile[i] = value
-                    st.session_state[profile_key] = temp_profile
+                if st.button("Apply Constant", key=f"{key}_apply_constant"):
+                    series_df["Value"] = const_value
+                    st.session_state[f"{key}_series"] = series_df
+                    st.rerun()
 
-            if len(timesteps) > max_display:
-                st.info(f"Only showing first {max_display} of {len(timesteps)} time steps for manual entry.")
+            elif preset == "Sinusoidal":
+                col1, col2 = st.columns(2)
+                with col1:
+                    amplitude = st.slider("Amplitude", 0.0, 1.0, 0.5, 0.01, key=f"{key}_sine_amplitude")
+                    periods = st.slider("Periods", 1, 10, 1, 1, key=f"{key}_sine_periods")
 
-    # Preview the profile
-    if show_preview:
-        st.subheader("Profile Preview")
-        fig = px.line(
-            x=timesteps,
-            y=st.session_state[profile_key],
-            labels={"x": "Time", "y": "Relative Value"}
+                with col2:
+                    offset = st.slider("Offset", 0.0, 1.0, 0.5, 0.01, key=f"{key}_sine_offset")
+                    phase = st.slider("Phase", 0.0, 2*np.pi, 0.0, 0.1, key=f"{key}_sine_phase")
+
+                if st.button("Apply Sinusoidal", key=f"{key}_apply_sine"):
+                    t = np.linspace(0, 2*np.pi*periods, len(timesteps))
+                    values = offset + amplitude * np.sin(t + phase)
+                    series_df["Value"] = values
+                    st.session_state[f"{key}_series"] = series_df
+                    st.rerun()
+
+            elif preset == "Linear Ramp":
+                col1, col2 = st.columns(2)
+                with col1:
+                    start_val = st.number_input("Start Value", value=0.0, key=f"{key}_ramp_start")
+                with col2:
+                    end_val = st.number_input("End Value", value=1.0, key=f"{key}_ramp_end")
+
+                if st.button("Apply Ramp", key=f"{key}_apply_ramp"):
+                    values = np.linspace(start_val, end_val, len(timesteps))
+                    series_df["Value"] = values
+                    st.session_state[f"{key}_series"] = series_df
+                    st.rerun()
+
+            elif preset == "Step Function":
+                col1, col2 = st.columns(2)
+                with col1:
+                    low_val = st.number_input("Low Value", value=0.0, key=f"{key}_step_low")
+                with col2:
+                    high_val = st.number_input("High Value", value=1.0, key=f"{key}_step_high")
+
+                step_point = st.slider(
+                    "Step Point",
+                    0, len(timesteps)-1,
+                       len(timesteps)//2,
+                    key=f"{key}_step_point"
+                )
+
+                if st.button("Apply Step", key=f"{key}_apply_step"):
+                    values = np.array([low_val] * len(timesteps))
+                    values[step_point:] = high_val
+                    series_df["Value"] = values
+                    st.session_state[f"{key}_series"] = series_df
+                    st.rerun()
+
+        # Import/Export options in an expander
+        with st.expander("Import/Export Data"):
+            col1, col2 = st.columns(2)
+            with col1:
+                csv = series_df.to_csv().encode('utf-8')
+                st.download_button(
+                    "Download CSV",
+                    data=csv,
+                    file_name=f"{key}_data.csv",
+                    mime="text/csv",
+                    key=f"{key}_download"
+                )
+
+            with col2:
+                uploaded_file = st.file_uploader(
+                    "Upload CSV or Excel",
+                    type=["csv", "xlsx", "xls"],
+                    key=f"{key}_upload"
+                )
+
+                if uploaded_file is not None:
+                    try:
+                        if uploaded_file.name.endswith('.csv'):
+                            imported_data = pd.read_csv(uploaded_file, index_col=0)
+                        else:
+                            imported_data = pd.read_excel(uploaded_file, index_col=0)
+
+                        # Ensure the imported data has the right column
+                        if "Value" not in imported_data.columns and len(imported_data.columns) > 0:
+                            imported_data = imported_data.rename(columns={imported_data.columns[0]: "Value"})
+
+                        # Update the session state
+                        st.session_state[f"{key}_series"] = imported_data
+                        st.success(f"Loaded data with {len(imported_data)} values")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error importing data: {str(e)}")
+
+        # Return the array of values
+        return series_df["Value"].values
+
+def initialize_class_ui():
+    """UI for initializing a class with numeric parameters"""
+    st.title("Class Initializer")
+
+    # Example: Creating a timestep array for time series data
+    if "timesteps" not in st.session_state:
+        st.session_state.timesteps = pd.date_range(
+            start="2023-01-01",
+            periods=24,
+            freq="H"
         )
-        st.plotly_chart(fig, use_container_width=True)
 
-    # Return the profile data from session state
-    return st.session_state[profile_key]
+    # Class selection
+    class_type = st.selectbox(
+        "Select Class to Initialize",
+        options=["Battery", "Source", "Sink", "Storage"],
+        key="class_selector"
+    )
+
+    # Container for the form-like UI
+    with st.container():
+        # Basic parameters section
+        st.write("## Basic Parameters")
+        name = st.text_input("Name", value=f"New{class_type}", key="class_name")
+
+        # Create columns for layout
+        col1, col2 = st.columns(2)
+        with col1:
+            capacity = st.number_input("Capacity (kWh)", value=100.0, key="capacity")
+        with col2:
+            efficiency = st.number_input("Efficiency (%)", value=90.0, key="efficiency") / 100.0
+
+        # Advanced parameters section using smart_numeric_input
+        st.write("## Advanced Parameters")
+
+        # Example parameter that could be single value or time series
+        charge_rate = smart_numeric_input(
+            "Charge Rate",
+            key="charge_rate",
+            default_value=0.2,
+            description="Maximum charge rate as fraction of capacity per hour",
+            timesteps=st.session_state.timesteps
+        )
+
+        discharge_rate = smart_numeric_input(
+            "Discharge Rate",
+            key="discharge_rate",
+            default_value=0.3,
+            description="Maximum discharge rate as fraction of capacity per hour",
+            timesteps=st.session_state.timesteps
+        )
+
+        # Cost parameter
+        cost = smart_numeric_input(
+            "Cost",
+            key="cost",
+            default_value=0.1,
+            description="Cost per kWh",
+            timesteps=st.session_state.timesteps
+        )
+
+        # Show summary of configuration
+        st.write("## Summary")
+        st.write(f"Creating a new {class_type} named '{name}'")
+
+        # Display different summaries based on the parameter types
+        parameters = {
+            "capacity": capacity,
+            "efficiency": efficiency,
+            "charge_rate": charge_rate,
+            "discharge_rate": discharge_rate,
+            "cost": cost
+        }
+
+        # Create a summary table
+        summary_data = []
+        for param_name, param_value in parameters.items():
+            if isinstance(param_value, np.ndarray) or isinstance(param_value, list):
+                value_str = "Time series data"
+                data_type = "Time Series"
+            else:
+                value_str = str(param_value)
+                data_type = "Single Value"
+
+            summary_data.append({
+                "Parameter": param_name.replace("_", " ").title(),
+                "Type": data_type,
+                "Value": value_str
+            })
+
+        summary_df = pd.DataFrame(summary_data)
+        st.table(summary_df[["Parameter", "Type", "Value"]])
+
+        # Create instance button
+        if st.button("Create Instance", key="create_instance"):
+            try:
+                # Example of creating an instance
+                if class_type == "Battery":
+                    # This is where you'd create your actual class instance
+                    # battery = Battery(name=name, capacity=capacity, ...)
+                    st.success(f"Successfully created {class_type} instance: {name}")
+
+                    # Show what would be passed to the class
+                    st.write("Parameters passed to constructor:")
+                    for param_name, param_value in parameters.items():
+                        if isinstance(param_value, np.ndarray) or isinstance(param_value, list):
+                            st.write(f"- {param_name}: array with {len(param_value)} values")
+                        else:
+                            st.write(f"- {param_name}: {param_value}")
+
+                    # Add to session state (in real implementation)
+                    # if "instances" not in st.session_state:
+                    #     st.session_state.instances = {}
+                    # st.session_state.instances[name] = battery
+                else:
+                    st.info(f"Would create {class_type} instance (not implemented in this example)")
+            except Exception as e:
+                st.error(f"Error creating instance: {str(e)}")

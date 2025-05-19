@@ -96,7 +96,7 @@ else:  # Help & Documentation
 st.sidebar.markdown("---")
 
 # Import and call sidebar components
-import ui.sidebar_ui as sidebar_ui
-sidebar_ui.render_system_status()
-sidebar_ui.render_import_export()
-sidebar_ui.render_validation()
+import utils.session_state as session_state
+session_state.render_system_status()
+session_state.render_import_export()
+session_state.render_validation()

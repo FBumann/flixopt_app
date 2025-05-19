@@ -44,8 +44,8 @@ visualize results in an interactive environment.
 # Initialize session state variables if they don't exist
 if 'flow_system' not in st.session_state:
     st.session_state.flow_system = None
-if 'components' not in st.session_state:
-    st.session_state.components = {
+if 'elements' not in st.session_state:
+    st.session_state.elements = {
         'buses': [],
         'effects': [],
         'converters': [],
@@ -55,8 +55,8 @@ if 'components' not in st.session_state:
     }
 if 'timesteps' not in st.session_state:
     st.session_state.timesteps = None
-if 'calculation_results' not in st.session_state:
-    st.session_state.calculation_results = None
+if 'results' not in st.session_state:
+    st.session_state.results = None
 
 # Add a main menu at the top
 st.sidebar.title("FlixOpt Energy Modeler")
@@ -134,17 +134,17 @@ if app_mode == "Model Builder":
                     if st.form_submit_button("Add Bus"):
                         try:
                             new_bus = fx.Bus(bus_name, excess_penalty_per_flow_hour=bus_excess_penalty)
-                            st.session_state.components['buses'].append(new_bus)
+                            st.session_state.elements['buses'].append(new_bus)
                             st.session_state.flow_system.add_elements(new_bus)
                             st.success(f"Bus '{bus_name}' added successfully!")
                         except Exception as e:
                             st.error(f"Error adding bus: {str(e)}")
 
                 # Display existing buses
-                if st.session_state.components['buses']:
+                if st.session_state.elements['buses']:
                     st.write("Current Buses:")
-                    for i, bus in enumerate(st.session_state.components['buses']):
-                        st.write(f"{i+1}. {bus.label}")
+                    for i, bus in enumerate(st.session_state.elements['buses']):
+                        st.write(f"{i+1}. {bus}")
 
             # --- EFFECTS TAB ---
             with component_tabs[1]:
@@ -177,16 +177,16 @@ if app_mode == "Model Builder":
                                 is_objective=is_objective,
                                 maximum_total=maximum_total
                             )
-                            st.session_state.components['effects'].append(new_effect)
+                            st.session_state.elements['effects'].append(new_effect)
                             st.session_state.flow_system.add_elements(new_effect)
                             st.success(f"Effect '{effect_name}' added successfully!")
                         except Exception as e:
                             st.error(f"Error adding effect: {str(e)}")
 
                 # Display existing effects
-                if st.session_state.components['effects']:
+                if st.session_state.elements['effects']:
                     st.write("Current Effects:")
-                    for i, effect in enumerate(st.session_state.components['effects']):
+                    for i, effect in enumerate(st.session_state.elements['effects']):
                         st.write(f"{i+1}. {effect.label} ({effect.unit}) - {'Objective' if effect.is_objective else 'Constraint'}")
 
             # --- CONVERTERS TAB ---
@@ -228,7 +228,7 @@ if app_mode == "Model Builder":
                                     Q_fu=fx.Flow(label='Q_fu', bus=q_fu_bus, size=q_th_size/boiler_eta),
                                 )
 
-                                st.session_state.components['converters'].append(boiler)
+                                st.session_state.elements['converters'].append(boiler)
                                 st.session_state.flow_system.add_elements(boiler)
                                 st.success(f"Boiler '{boiler_name}' added successfully!")
                             except Exception as e:
@@ -270,16 +270,16 @@ if app_mode == "Model Builder":
                                     Q_fu=q_fu
                                 )
 
-                                st.session_state.components['converters'].append(chp)
+                                st.session_state.elements['converters'].append(chp)
                                 st.session_state.flow_system.add_elements(chp)
                                 st.success(f"CHP '{chp_name}' added successfully!")
                             except Exception as e:
                                 st.error(f"Error adding CHP: {str(e)}")
 
                 # Display existing converters
-                if st.session_state.components['converters']:
+                if st.session_state.elements['converters']:
                     st.write("Current Converters:")
-                    for i, converter in enumerate(st.session_state.components['converters']):
+                    for i, converter in enumerate(st.session_state.elements['converters']):
                         st.write(f"{i+1}. {converter.label} ({type(converter).__name__})")
 
             # --- STORAGE TAB ---
@@ -327,16 +327,16 @@ if app_mode == "Model Builder":
                                 prevent_simultaneous_charge_and_discharge=prevent_simultaneous
                             )
 
-                            st.session_state.components['storages'].append(new_storage)
+                            st.session_state.elements['storages'].append(new_storage)
                             st.session_state.flow_system.add_elements(new_storage)
                             st.success(f"Storage '{storage_name}' added successfully!")
                         except Exception as e:
                             st.error(f"Error adding storage: {str(e)}")
 
                 # Display existing storage systems
-                if st.session_state.components['storages']:
+                if st.session_state.elements['storages']:
                     st.write("Current Storage Systems:")
-                    for i, storage in enumerate(st.session_state.components['storages']):
+                    for i, storage in enumerate(st.session_state.elements['storages']):
                         st.write(f"{i+1}. {storage.label}")
 
             # --- SOURCES & SINKS TAB ---
@@ -432,7 +432,7 @@ if app_mode == "Model Builder":
                                 # Create source
                                 new_source = fx.Source(source_name, source=flow)
 
-                                st.session_state.components['sources'].append(new_source)
+                                st.session_state.elements['sources'].append(new_source)
                                 st.session_state.flow_system.add_elements(new_source)
                                 st.success(f"Source '{source_name}' added successfully!")
                             except Exception as e:
@@ -511,7 +511,7 @@ if app_mode == "Model Builder":
                                 # Create sink
                                 new_sink = fx.Sink(sink_name, sink=flow)
 
-                                st.session_state.components['sinks'].append(new_sink)
+                                st.session_state.elements['sinks'].append(new_sink)
                                 st.session_state.flow_system.add_elements(new_sink)
                                 st.success(f"Sink '{sink_name}' added successfully!")
                             except Exception as e:
@@ -521,15 +521,15 @@ if app_mode == "Model Builder":
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    if st.session_state.components['sources']:
+                    if st.session_state.elements['sources']:
                         st.write("Current Sources:")
-                        for i, source in enumerate(st.session_state.components['sources']):
+                        for i, source in enumerate(st.session_state.elements['sources']):
                             st.write(f"{i+1}. {source.label}")
 
                 with col2:
-                    if st.session_state.components['sinks']:
+                    if st.session_state.elements['sinks']:
                         st.write("Current Sinks:")
-                        for i, sink in enumerate(st.session_state.components['sinks']):
+                        for i, sink in enumerate(st.session_state.elements['sinks']):
                             st.write(f"{i+1}. {sink.label}")
 
     # ==================== OPTIMIZATION TAB ====================
@@ -538,7 +538,7 @@ if app_mode == "Model Builder":
 
         if st.session_state.flow_system is None:
             st.warning("Please initialize the flow system first in the System Configuration tab.")
-        elif not any(st.session_state.components.values()):
+        elif not any(st.session_state.elements.values()):
             st.warning("Please add components to your system before running the optimization.")
         else:
             # System overview
@@ -546,12 +546,12 @@ if app_mode == "Model Builder":
 
             # Count components by type
             component_counts = {
-                "Buses": len(st.session_state.components['buses']),
-                "Effects": len(st.session_state.components['effects']),
-                "Converters": len(st.session_state.components['converters']),
-                "Storage Systems": len(st.session_state.components['storages']),
-                "Sources": len(st.session_state.components['sources']),
-                "Sinks": len(st.session_state.components['sinks'])
+                "Buses": len(st.session_state.elements['buses']),
+                "Effects": len(st.session_state.elements['effects']),
+                "Converters": len(st.session_state.elements['converters']),
+                "Storage Systems": len(st.session_state.elements['storages']),
+                "Sources": len(st.session_state.elements['sources']),
+                "Sinks": len(st.session_state.elements['sinks'])
             }
 
             # Create a pie chart for component counts
@@ -584,7 +584,7 @@ if app_mode == "Model Builder":
                         calculation.solve(fx.solvers.HighsSolver(gap, max_time))
 
                         # Store results
-                        st.session_state.calculation_results = calculation.results
+                        st.session_state.results = calculation.results
 
                         st.success("Optimization completed successfully!")
                 except Exception as e:
@@ -594,16 +594,16 @@ if app_mode == "Model Builder":
     with tabs[3]:
         st.header("Results Visualization")
 
-        if st.session_state.calculation_results is None:
+        if st.session_state.results is None:
             st.warning("Please run the optimization first to see results.")
         else:
-            results = st.session_state.calculation_results
+            results = st.session_state.results
 
             # Key Performance Indicators
             st.subheader("Key Performance Indicators")
 
             # Extract objective values
-            objective_effects = [effect for effect in st.session_state.components['effects'] if effect.is_objective]
+            objective_effects = [effect for effect in st.session_state.elements['effects'] if effect.is_objective]
             if objective_effects:
                 objective_values = {}
                 for effect in objective_effects:
@@ -629,7 +629,7 @@ if app_mode == "Model Builder":
 
             if viz_type == "Buses":
                 # Bus balance visualization
-                if st.session_state.components['buses']:
+                if st.session_state.elements['buses']:
                     selected_bus = st.selectbox("Select Bus", list(st.session_state.flow_system.buses))
 
                     # Visualization type for buses
@@ -665,7 +665,7 @@ if app_mode == "Model Builder":
                             # Get flows for the selected bus
                             component_flows = []
                             for component_type in ['converters', 'storages', 'sources', 'sinks']:
-                                for component in st.session_state.components[component_type]:
+                                for component in st.session_state.elements[component_type]:
                                     for flow in component.flow:
                                         if hasattr(flow, 'bus') and flow.bus == selected_bus:
                                             component_flows.append(f"{component.label}({flow.label})|flow_rate")
@@ -691,8 +691,8 @@ if app_mode == "Model Builder":
 
             elif viz_type == "Converters":
                 # Converter visualization
-                if st.session_state.components['converters']:
-                    converter_options = [conv.label for conv in st.session_state.components['converters']]
+                if st.session_state.elements['converters']:
+                    converter_options = [conv.label for conv in st.session_state.elements['converters']]
                     selected_converter = st.selectbox("Select Converter", converter_options)
 
                     # Visualization type for converters
@@ -715,7 +715,7 @@ if app_mode == "Model Builder":
 
                         elif converter_viz_type == "Flow Rates Heatmap":
                             # Get converter flows
-                            converter = next((c for c in st.session_state.components['converters'] if c.label == selected_converter), None)
+                            converter = next((c for c in st.session_state.elements['converters'] if c.label == selected_converter), None)
                             if converter:
                                 flow_options = [f"{selected_converter}({flow.label})|flow_rate" for flow in converter.flow]
 
@@ -740,8 +740,8 @@ if app_mode == "Model Builder":
 
             elif viz_type == "Storage":
                 # Storage visualization
-                if st.session_state.components['storages']:
-                    storage_options = [storage.label for storage in st.session_state.components['storages']]
+                if st.session_state.elements['storages']:
+                    storage_options = [storage.label for storage in st.session_state.elements['storages']]
                     selected_storage = st.selectbox("Select Storage", storage_options)
 
                     try:
@@ -757,7 +757,7 @@ if app_mode == "Model Builder":
 
                         # Show additional storage metrics
                         try:
-                            storage = next((s for s in st.session_state.components['storages'] if s.label == selected_storage), None)
+                            storage = next((s for s in st.session_state.elements['storages'] if s.label == selected_storage), None)
                             if storage:
                                 # Calculate storage utilization metrics
                                 charge_state = results[selected_storage].charge_state
@@ -790,7 +790,7 @@ if app_mode == "Model Builder":
                     component_energy = {}
 
                     # Process converters
-                    for converter in st.session_state.components['converters']:
+                    for converter in st.session_state.elements['converters']:
                         component_energy[converter.label] = 0
                         for flow in converter.flow:
                             if hasattr(flow, 'is_input') and flow.is_input:
@@ -805,14 +805,14 @@ if app_mode == "Model Builder":
                                     component_energy[converter.label] += flow_rates.sum()
 
                     # Process sources (always positive contribution)
-                    for source in st.session_state.components['sources']:
+                    for source in st.session_state.elements['sources']:
                         source_flow = source.source
                         flow_rates = results[source.label][source_flow.label].flow_rate
                         if flow_rates is not None:
                             component_energy[source.label] = flow_rates.sum()
 
                     # Process sinks (always negative contribution)
-                    for sink in st.session_state.components['sinks']:
+                    for sink in st.session_state.elements['sinks']:
                         sink_flow = sink.sink
                         flow_rates = results[sink.label][sink_flow.label].flow_rate
                         if flow_rates is not None:
@@ -823,7 +823,7 @@ if app_mode == "Model Builder":
                     df = pd.DataFrame(list(component_energy.items()), columns=['Component', 'Net Energy'])
                     df['Type'] = df['Component'].apply(
                         lambda x: next(
-                            (k for k, v in st.session_state.components.items() if any(c.label == x for c in v)),
+                            (k for k, v in st.session_state.elements.items() if any(c.label == x for c in v)),
                             'Other'
                         )
                     )
@@ -855,12 +855,12 @@ if app_mode == "Model Builder":
                     effect_data = []
 
                     # Loop through effect types
-                    for effect in st.session_state.components['effects']:
+                    for effect in st.session_state.elements['effects']:
                         effect_label = effect.label
 
                         # Process all components for this effect
                         for component_type in ['converters', 'storages', 'sources', 'sinks']:
-                            for component in st.session_state.components[component_type]:
+                            for component in st.session_state.elements[component_type]:
                                 component_label = component.label
                                 component_type_label = type_mapping.get(component_type, component_type.capitalize())
 
@@ -895,7 +895,7 @@ if app_mode == "Model Builder":
                             y='Value',
                             color='Type',
                             title=f'{selected_effect} Distribution by Component',
-                            labels={'Value': f'{selected_effect} ({next((e.unit for e in st.session_state.components["effects"] if e.label == selected_effect), "")})'}
+                            labels={'Value': f'{selected_effect} ({next((e.unit for e in st.session_state.elements["effects"] if e.label == selected_effect), "")})'}
                         )
                         st.plotly_chart(fig, use_container_width=True)
                 except Exception as e:
@@ -933,7 +933,7 @@ if app_mode == "Model Builder":
 
                                 # Collect flow rates from all components
                                 for component_type in ['converters', 'storages', 'sources', 'sinks']:
-                                    for component in st.session_state.components[component_type]:
+                                    for component in st.session_state.elements[component_type]:
                                         for flow in component.flow:
                                             flow_key = f"{component.label}({flow.label})|flow_rate"
                                             try:
@@ -966,12 +966,12 @@ if app_mode == "Model Builder":
                                 # Collect total effects for all components
                                 effects_data = {}
 
-                                for effect in st.session_state.components['effects']:
+                                for effect in st.session_state.elements['effects']:
                                     effect_label = effect.label
                                     effects_data[effect_label] = {}
 
                                     for component_type in ['converters', 'storages', 'sources', 'sinks']:
-                                        for component in st.session_state.components[component_type]:
+                                        for component in st.session_state.elements[component_type]:
                                             try:
                                                 effect_value = results.get_total_effect_for_component(
                                                     effect_label, component.label
@@ -1011,11 +1011,11 @@ if app_mode == "Model Builder":
                                         files_to_export.append(file_path)
 
                             # Export storage states
-                            if export_storage and st.session_state.components['storages']:
+                            if export_storage and st.session_state.elements['storages']:
                                 storage_data = {}
 
                                 # Collect charge states for all storage components
-                                for storage in st.session_state.components['storages']:
+                                for storage in st.session_state.elements['storages']:
                                     try:
                                         charge_state = results[storage.label].charge_state
                                         if charge_state is not None:
@@ -1099,7 +1099,7 @@ if app_mode == "Model Builder":
                         }
 
                         # Save component configurations
-                        for component_type, components in st.session_state.components.items():
+                        for component_type, components in st.session_state.elements.items():
                             model_config["components"][component_type] = []
 
                             for component in components:
@@ -1519,7 +1519,7 @@ if app_mode == "Model Builder":
                 }
 
                 # Save component configurations
-                for component_type, components in st.session_state.components.items():
+                for component_type, components in st.session_state.elements.items():
                     model_config["components"][component_type] = []
 
                     for component in components:
@@ -1558,7 +1558,7 @@ if app_mode == "Model Builder":
             if "timesteps" in config_data and "components" in config_data:
                 if st.sidebar.button("Apply Imported Configuration"):
                     # Reset current system
-                    st.session_state.components = {
+                    st.session_state.elements = {
                         'buses': [],
                         'effects': [],
                         'converters': [],
@@ -1595,7 +1595,7 @@ if app_mode == "Model Builder" and st.session_state.flow_system is not None:
 
     if st.sidebar.button("Validate System"):
         # Count components by type
-        component_counts = {k: len(v) for k, v in st.session_state.components.items()}
+        component_counts = {k: len(v) for k, v in st.session_state.elements.items()}
 
         # Check for basic requirements
         validation_issues = []
@@ -1606,18 +1606,18 @@ if app_mode == "Model Builder" and st.session_state.flow_system is not None:
         if component_counts['effects'] == 0:
             validation_issues.append("⚠️ No effects (objectives/constraints) defined")
 
-        if not any(effect.is_objective for effect in st.session_state.components['effects']):
+        if not any(effect.is_objective for effect in st.session_state.elements['effects']):
             validation_issues.append("⚠️ No objective function defined")
 
         if component_counts['converters'] + component_counts['sources'] + component_counts['sinks'] == 0:
             validation_issues.append("⚠️ No energy producers or consumers defined")
 
         # Check for bus connections
-        bus_connections = {bus.label: {'in': 0, 'out': 0} for bus in st.session_state.components['buses']}
+        bus_connections = {bus.label: {'in': 0, 'out': 0} for bus in st.session_state.elements['buses']}
 
         # Count connections to each bus
         for component_type in ['converters', 'storages', 'sources', 'sinks']:
-            for component in st.session_state.components[component_type]:
+            for component in st.session_state.elements[component_type]:
                 if hasattr(component, 'flow'):
                     for flow in component.flow:
                         if hasattr(flow, 'bus') and flow.bus in bus_connections:
@@ -1650,7 +1650,7 @@ st.sidebar.subheader("System Status")
 
 # Display component counts
 if st.session_state.flow_system is not None:
-    component_counts = {k: len(v) for k, v in st.session_state.components.items()}
+    component_counts = {k: len(v) for k, v in st.session_state.elements.items()}
 
     # Create a formatted status display
     st.sidebar.markdown(f"""

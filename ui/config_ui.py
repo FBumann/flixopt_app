@@ -30,7 +30,7 @@ def render_config_tab():
 
     # Initialize system button
     if st.button("Initialize Flow System"):
-        success, message = initialize_flow_system(start_date, periods, freq, excess_penalty)
+        success, message = initialize_flow_system(start_date, periods, freq)
         if success:
             st.success(message)
         else:

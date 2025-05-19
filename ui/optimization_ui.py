@@ -9,7 +9,7 @@ def render_optimization_tab():
     if st.session_state.flow_system is None:
         st.warning("Please initialize the flow system first in the System Configuration tab.")
         return
-    elif not any(st.session_state.components.values()):
+    elif not any(st.session_state.elements.values()):
         st.warning("Please add components to your system before running the optimization.")
         return
 
@@ -18,12 +18,12 @@ def render_optimization_tab():
 
     # Count components by type
     component_counts = {
-        "Buses": len(st.session_state.components['buses']),
-        "Effects": len(st.session_state.components['effects']),
-        "Converters": len(st.session_state.components['converters']),
-        "Storage Systems": len(st.session_state.components['storages']),
-        "Sources": len(st.session_state.components['sources']),
-        "Sinks": len(st.session_state.components['sinks'])
+        "Buses": len(st.session_state.elements['buses']),
+        "Effects": len(st.session_state.elements['effects']),
+        "Converters": len(st.session_state.elements['converters']),
+        "Storage Systems": len(st.session_state.elements['storages']),
+        "Sources": len(st.session_state.elements['sources']),
+        "Sinks": len(st.session_state.elements['sinks'])
     }
 
     # Create a pie chart for component counts
@@ -36,8 +36,9 @@ def render_optimization_tab():
     st.plotly_chart(fig, use_container_width=True)
 
     # Check for objective
-    has_objective = any(effect.is_objective for effect in st.session_state.components['effects'])
-    if not has_objective:
+    try:
+        st.session_state.flow_system.effects.objective_effect
+    except KeyError:
         st.warning("⚠️ No objective function defined. Please add at least one effect with 'Is Objective' checked.")
 
     # Solver settings
@@ -198,7 +199,7 @@ def render_optimization_tab():
                 calculation.solve(solver)
 
                 # Store results
-                st.session_state.calculation_results = calculation.results
+                st.session_state.results = calculation.results
 
                 # Calculate some statistics about the solution
                 n_variables = calculation.model.n_variables if hasattr(calculation.model, 'n_variables') else "N/A"
@@ -210,13 +211,13 @@ def render_optimization_tab():
                 st.subheader("Optimization Results")
 
                 # Extract objective values
-                objective_effects = [effect for effect in st.session_state.components['effects'] if effect.is_objective]
+                objective_effects = [effect for effect in st.session_state.elements['effects'] if effect.is_objective]
                 if objective_effects:
                     objective_values = {}
                     for effect in objective_effects:
                         try:
                             # Get total effect value
-                            value = st.session_state.calculation_results.get_total_effect(effect.label)
+                            value = st.session_state.results.get_total_effect(effect.label)
                             objective_values[effect.label] = value
                         except:
                             objective_values[effect.label] = "N/A"

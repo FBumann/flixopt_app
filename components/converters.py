@@ -1,6 +1,6 @@
 import streamlit as st
 import flixopt as fx
-from utils.session_state import add_component
+from utils.session_state import add_element, delete_element
 
 def create_converter_ui():
     """UI for creating and managing converters"""
@@ -8,7 +8,7 @@ def create_converter_ui():
     st.write("Converters transform energy from one form to another, like boilers or CHP units.")
 
     # If no buses exist, inform the user
-    if not st.session_state.components['buses']:
+    if not st.session_state.elements['buses']:
         st.warning("Please create at least one bus before adding converters.")
         return
 
@@ -73,7 +73,7 @@ def create_boiler_ui():
                     Q_fu=fx.Flow(label='Q_fu', bus=q_fu_bus, size=q_th_size/boiler_eta),
                 )
 
-                success, message = add_component(boiler, 'converters')
+                success, message = add_element(boiler, 'converters')
 
                 if success:
                     st.success(message)
@@ -135,7 +135,7 @@ def create_chp_ui():
                     Q_fu=q_fu
                 )
 
-                success, message = add_component(chp, 'converters')
+                success, message = add_element(chp, 'converters')
 
                 if success:
                     st.success(message)
@@ -191,7 +191,7 @@ def create_heat_pump_ui():
                     [[1/cop]]  # Conversion matrix (1 kW heat output requires 1/COP kW electricity)
                 )
 
-                success, message = add_component(hp, 'converters')
+                success, message = add_element(hp, 'converters')
 
                 if success:
                     st.success(message)
@@ -234,9 +234,9 @@ def add_on_off_parameters_ui(prefix):
 
     # Switch-on costs
     switch_on_effects = {}
-    if st.session_state.components['effects']:
+    if st.session_state.elements['effects']:
         st.subheader("Switch-On Effects")
-        for effect in st.session_state.components['effects']:
+        for effect in st.session_state.elements['effects']:
             value = st.number_input(f"{effect.label} per Switch-On",
                                     value=0.0,
                                     key=f"{prefix}_switch_{effect.label}")
@@ -245,9 +245,9 @@ def add_on_off_parameters_ui(prefix):
 
     # Running hour costs
     running_hour_effects = {}
-    if st.session_state.components['effects']:
+    if st.session_state.elements['effects']:
         st.subheader("Running Hour Effects")
-        for effect in st.session_state.components['effects']:
+        for effect in st.session_state.elements['effects']:
             value = st.number_input(f"{effect.label} per Running Hour",
                                     value=0.0,
                                     key=f"{prefix}_running_{effect.label}")
@@ -285,9 +285,9 @@ def add_investment_parameters_ui(prefix):
 
     # Fixed effects
     fixed_effects = {}
-    if st.session_state.components['effects']:
+    if st.session_state.elements['effects']:
         st.subheader("Fixed Effects")
-        for effect in st.session_state.components['effects']:
+        for effect in st.session_state.elements['effects']:
             value = st.number_input(f"Fixed {effect.label}",
                                     value=0.0,
                                     key=f"{prefix}_fixed_{effect.label}")
@@ -296,9 +296,9 @@ def add_investment_parameters_ui(prefix):
 
     # Specific effects
     specific_effects = {}
-    if st.session_state.components['effects']:
+    if st.session_state.elements['effects']:
         st.subheader("Specific Effects (per kW)")
-        for effect in st.session_state.components['effects']:
+        for effect in st.session_state.elements['effects']:
             value = st.number_input(f"{effect.label} per kW",
                                     value=0.0,
                                     key=f"{prefix}_specific_{effect.label}")
@@ -316,7 +316,7 @@ def add_investment_parameters_ui(prefix):
 
 def display_existing_converters():
     """Display the list of existing converters"""
-    if not st.session_state.components['converters']:
+    if not st.session_state.elements['converters']:
         return
 
     st.write("Current Converters:")
@@ -327,17 +327,17 @@ def display_existing_converters():
     cols[1].write("**Type**")
     cols[2].write("**Actions**")
 
-    for i, converter in enumerate(st.session_state.components['converters']):
+    for i, converter in enumerate(st.session_state.flow_system.components.values()):
         cols = st.columns([3, 2, 1])
-        cols[0].write(converter.label)
+        cols[0].write(converter.label_full)
 
         # Determine converter type
         converter_type = type(converter).__name__
         cols[1].write(converter_type)
 
         # Action buttons
-        if cols[2].button("Delete", key=f"delete_converter_{i}"):
-            delete_converter(i)
+        if cols[2].button("Delete", key=f"delete_converter_{converter.label_full}"):
+            delete_element(converter.label_full, 'converters')
             st.rerun()
 
         # Show details in an expander
@@ -358,17 +358,3 @@ def display_existing_converters():
                 st.write(f"**Electrical Efficiency:** {converter.eta_el:.2f}")
             if hasattr(converter, 'eta_th'):
                 st.write(f"**Thermal Efficiency:** {converter.eta_th:.2f}")
-
-def delete_converter(index):
-    """Delete a converter from the system"""
-    try:
-        # Get the converter to delete
-        converter_to_delete = st.session_state.components['converters'][index]
-
-        # Remove it from the system
-        st.session_state.flow_system.remove_elements(converter_to_delete)
-        st.session_state.components['converters'].pop(index)
-        return True
-    except Exception as e:
-        st.error(f"Error deleting converter: {str(e)}")
-        return False

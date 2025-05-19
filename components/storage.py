@@ -1,6 +1,6 @@
 import streamlit as st
 import flixopt as fx
-from utils.session_state import add_component
+from utils.session_state import add_element, delete_element
 
 def create_storage_ui():
     """UI for creating and managing storage systems"""
@@ -8,7 +8,7 @@ def create_storage_ui():
     st.write("Storage systems store energy for later use.")
 
     # If no buses exist, inform the user
-    if not st.session_state.components['buses']:
+    if not st.session_state.elements['buses']:
         st.warning("Please create at least one bus before adding storage systems.")
         return
 
@@ -58,26 +58,26 @@ def create_storage_ui():
             charge_effects = {}
             discharge_effects = {}
 
-            if st.session_state.components['effects']:
+            if st.session_state.elements['effects']:
                 col1, col2 = st.columns(2)
 
                 with col1:
                     st.write("**Charging Effects:**")
-                    for effect in st.session_state.components['effects']:
-                        value = st.number_input(f"{effect.label} per kWh (Charging)",
+                    for effect in st.session_state.elements['effects']:
+                        value = st.number_input(f"{effect} per kWh (Charging)",
                                                 value=0.0,
-                                                key=f"storage_charge_{effect.label}")
+                                                key=f"storage_charge_{effect}")
                         if value != 0:
-                            charge_effects[effect.label] = value
+                            charge_effects[effect] = value
 
                 with col2:
                     st.write("**Discharging Effects:**")
-                    for effect in st.session_state.components['effects']:
-                        value = st.number_input(f"{effect.label} per kWh (Discharging)",
+                    for effect in st.session_state.elements['effects']:
+                        value = st.number_input(f"{effect} per kWh (Discharging)",
                                                 value=0.0,
-                                                key=f"storage_discharge_{effect.label}")
+                                                key=f"storage_discharge_{effect}")
                         if value != 0:
-                            discharge_effects[effect.label] = value
+                            discharge_effects[effect] = value
 
         if st.form_submit_button("Add Storage"):
             if st.session_state.flow_system is None:
@@ -114,7 +114,7 @@ def create_storage_ui():
                     final_charge_state=final_charge_state if final_charge_state is not None else None
                 )
 
-                success, message = add_component(new_storage, 'storages')
+                success, message = add_element(new_storage, 'storages')
 
                 if success:
                     st.success(message)
@@ -128,7 +128,7 @@ def create_storage_ui():
 
 def display_existing_storage():
     """Display the list of existing storage systems"""
-    if not st.session_state.components['storages']:
+    if not st.session_state.elements['storages']:
         return
 
     st.write("Current Storage Systems:")
@@ -141,7 +141,7 @@ def display_existing_storage():
     cols[3].write("**Efficiency**")
     cols[4].write("**Actions**")
 
-    for i, storage in enumerate(st.session_state.components['storages']):
+    for i, storage in enumerate(st.session_state.elements['storages']):
         cols = st.columns([3, 1, 1, 1, 1])
         cols[0].write(storage.label)
 
@@ -167,7 +167,7 @@ def display_existing_storage():
 
         # Action buttons
         if cols[4].button("Delete", key=f"delete_storage_{i}"):
-            delete_storage(i)
+            delete_element(i)
             st.rerun()
 
         # Show details in an expander
@@ -205,17 +205,3 @@ def display_existing_storage():
                 st.write("- Effects:")
                 for effect, value in storage.discharging.effects_per_flow_hour.items():
                     st.write(f"  - {effect}: {value}")
-
-def delete_storage(index):
-    """Delete a storage system from the system"""
-    try:
-        # Get the storage to delete
-        storage_to_delete = st.session_state.components['storages'][index]
-
-        # Remove it from the system
-        st.session_state.flow_system.remove_elements(storage_to_delete)
-        st.session_state.components['storages'].pop(index)
-        return True
-    except Exception as e:
-        st.error(f"Error deleting storage: {str(e)}")
-        return False

@@ -190,7 +190,7 @@ def load_simple_heat_template():
     # Add effects (costs)
     costs = fx.Effect("costs", "€", "Costs", is_standard=True, is_objective=True)
     st.session_state.flow_system.add_elements(costs)
-    st.session_state.components['effects'].append(costs)
+    st.session_state.elements['effects'].append(costs)
 
     # Add buses
     gas_bus = fx.Bus("Gas", excess_penalty_per_flow_hour=1e3)
@@ -198,7 +198,7 @@ def load_simple_heat_template():
 
     st.session_state.flow_system.add_elements(gas_bus)
     st.session_state.flow_system.add_elements(heat_bus)
-    st.session_state.components['buses'].extend([gas_bus, heat_bus])
+    st.session_state.elements['buses'].extend([gas_bus, heat_bus])
 
     # Add gas source
     gas_flow = fx.Flow(
@@ -210,7 +210,7 @@ def load_simple_heat_template():
     gas_source = fx.Source("Gas_Source", source=gas_flow)
 
     st.session_state.flow_system.add_elements(gas_source)
-    st.session_state.components['sources'].append(gas_source)
+    st.session_state.elements['sources'].append(gas_source)
 
     # Add boiler
     boiler = fx.linear_converters.Boiler(
@@ -221,7 +221,7 @@ def load_simple_heat_template():
     )
 
     st.session_state.flow_system.add_elements(boiler)
-    st.session_state.components['converters'].append(boiler)
+    st.session_state.elements['converters'].append(boiler)
 
     # Add heat demand with a simple daily profile
     heat_profile = np.ones(24)
@@ -239,7 +239,7 @@ def load_simple_heat_template():
     heat_sink = fx.Sink("Heat_Demand", sink=heat_flow)
 
     st.session_state.flow_system.add_elements(heat_sink)
-    st.session_state.components['sinks'].append(heat_sink)
+    st.session_state.elements['sinks'].append(heat_sink)
 
 def load_chp_template():
     """Load the CHP with Storage template components"""
@@ -257,7 +257,7 @@ def load_chp_template():
 
     st.session_state.flow_system.add_elements(costs)
     st.session_state.flow_system.add_elements(emissions)
-    st.session_state.components['effects'].extend([costs, emissions])
+    st.session_state.elements['effects'].extend([costs, emissions])
 
     # Add buses
     gas_bus = fx.Bus("Gas", excess_penalty_per_flow_hour=1e3)
@@ -267,7 +267,7 @@ def load_chp_template():
     st.session_state.flow_system.add_elements(gas_bus)
     st.session_state.flow_system.add_elements(heat_bus)
     st.session_state.flow_system.add_elements(elec_bus)
-    st.session_state.components['buses'].extend([gas_bus, heat_bus, elec_bus])
+    st.session_state.elements['buses'].extend([gas_bus, heat_bus, elec_bus])
 
     # Add gas source
     gas_flow = fx.Flow(
@@ -279,7 +279,7 @@ def load_chp_template():
     gas_source = fx.Source("Gas_Source", source=gas_flow)
 
     st.session_state.flow_system.add_elements(gas_source)
-    st.session_state.components['sources'].append(gas_source)
+    st.session_state.elements['sources'].append(gas_source)
 
     # Add grid source & sink (for buying and selling electricity)
     grid_in_flow = fx.Flow(
@@ -300,8 +300,8 @@ def load_chp_template():
 
     st.session_state.flow_system.add_elements(grid_in)
     st.session_state.flow_system.add_elements(grid_out)
-    st.session_state.components['sources'].append(grid_in)
-    st.session_state.components['sinks'].append(grid_out)
+    st.session_state.elements['sources'].append(grid_in)
+    st.session_state.elements['sinks'].append(grid_out)
 
     # Add CHP unit
     chp = fx.linear_converters.CHP(
@@ -314,7 +314,7 @@ def load_chp_template():
     )
 
     st.session_state.flow_system.add_elements(chp)
-    st.session_state.components['converters'].append(chp)
+    st.session_state.elements['converters'].append(chp)
 
     # Add backup boiler
     boiler = fx.linear_converters.Boiler(
@@ -325,7 +325,7 @@ def load_chp_template():
     )
 
     st.session_state.flow_system.add_elements(boiler)
-    st.session_state.components['converters'].append(boiler)
+    st.session_state.elements['converters'].append(boiler)
 
     # Add heat storage
     storage = fx.Storage(
@@ -341,7 +341,7 @@ def load_chp_template():
     )
 
     st.session_state.flow_system.add_elements(storage)
-    st.session_state.components['storages'].append(storage)
+    st.session_state.elements['storages'].append(storage)
 
     # Add heat demand with a simple daily profile (repeated for 2 days)
     heat_profile_day = np.ones(24)
@@ -362,7 +362,7 @@ def load_chp_template():
     heat_sink = fx.Sink("Heat_Demand", sink=heat_flow)
 
     st.session_state.flow_system.add_elements(heat_sink)
-    st.session_state.components['sinks'].append(heat_sink)
+    st.session_state.elements['sinks'].append(heat_sink)
 
     # Add electricity demand with a daily profile (repeated for 2 days)
     elec_profile_day = np.ones(24)
@@ -383,7 +383,7 @@ def load_chp_template():
     elec_sink = fx.Sink("Electricity_Demand", sink=elec_flow)
 
     st.session_state.flow_system.add_elements(elec_sink)
-    st.session_state.components['sinks'].append(elec_sink)
+    st.session_state.elements['sinks'].append(elec_sink)
 
 def load_apartment_template():
     """Load the Apartment Building template components"""
@@ -398,7 +398,7 @@ def load_apartment_template():
     # Add a basic effect
     costs = fx.Effect("costs", "€", "Costs", is_standard=True, is_objective=True)
     st.session_state.flow_system.add_elements(costs)
-    st.session_state.components['effects'].append(costs)
+    st.session_state.elements['effects'].append(costs)
 
     # Add basic buses
     elec_bus = fx.Bus("Electricity", excess_penalty_per_flow_hour=1e3)
@@ -408,7 +408,7 @@ def load_apartment_template():
     st.session_state.flow_system.add_elements(elec_bus)
     st.session_state.flow_system.add_elements(heat_bus)
     st.session_state.flow_system.add_elements(gas_bus)
-    st.session_state.components['buses'].extend([elec_bus, heat_bus, gas_bus])
+    st.session_state.elements['buses'].extend([elec_bus, heat_bus, gas_bus])
 
     # Basic placeholder message
     st.warning("The Apartment Building template is simplified in this demo. In a complete implementation, it would include more detailed components and load profiles.")
@@ -426,12 +426,12 @@ def load_microgrid_template():
     # Add a basic effect
     costs = fx.Effect("costs", "€", "Costs", is_standard=True, is_objective=True)
     st.session_state.flow_system.add_elements(costs)
-    st.session_state.components['effects'].append(costs)
+    st.session_state.elements['effects'].append(costs)
 
     # Add basic bus
     elec_bus = fx.Bus("Electricity", excess_penalty_per_flow_hour=1e3)
     st.session_state.flow_system.add_elements(elec_bus)
-    st.session_state.components['buses'].append(elec_bus)
+    st.session_state.elements['buses'].append(elec_bus)
 
     # Basic placeholder message
     st.warning("The Microgrid template is simplified in this demo. In a complete implementation, it would include solar PV, wind generation, battery storage, and detailed load profiles.")
@@ -449,7 +449,7 @@ def load_district_heating_template():
     # Add a basic effect
     costs = fx.Effect("costs", "€", "Costs", is_standard=True, is_objective=True)
     st.session_state.flow_system.add_elements(costs)
-    st.session_state.components['effects'].append(costs)
+    st.session_state.elements['effects'].append(costs)
 
     # Add basic buses
     primary_heat_bus = fx.Bus("Primary_Heat", excess_penalty_per_flow_hour=1e3)
@@ -457,7 +457,7 @@ def load_district_heating_template():
 
     st.session_state.flow_system.add_elements(primary_heat_bus)
     st.session_state.flow_system.add_elements(secondary_heat_bus)
-    st.session_state.components['buses'].extend([primary_heat_bus, secondary_heat_bus])
+    st.session_state.elements['buses'].extend([primary_heat_bus, secondary_heat_bus])
 
     # Basic placeholder message
     st.warning("The District Heating Network template is simplified in this demo. In a complete implementation, it would include multiple heat sources, district-level storage, and building clusters.")
