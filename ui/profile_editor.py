@@ -471,3 +471,102 @@ def initialize_class_ui():
                     st.info(f"Would create {class_type} instance (not implemented in this example)")
             except Exception as e:
                 st.error(f"Error creating instance: {str(e)}")
+
+# Dictionary editor for effects_per_flow_hour - revised to avoid nested expanders
+def dict_editor(label, key, available_effects=None, timesteps=None):
+    """
+    Dictionary editor for key-value pairs, with support for numeric or time series values.
+
+    Parameters:
+    -----------
+    label : str
+        Label for the dictionary
+    key : str
+        Unique key for session state
+    available_effects : list or None
+        List of available keys to choose from
+    timesteps : pandas.DatetimeIndex or None
+        Timesteps for time series values
+
+    Returns:
+    --------
+    dict
+        Dictionary of key-value pairs
+    """
+    st.write(f"#### {label}")
+
+    # Initialize session state
+    if f"{key}_dict" not in st.session_state:
+        st.session_state[f"{key}_dict"] = {}
+
+    if f"{key}_adding" not in st.session_state:
+        st.session_state[f"{key}_adding"] = False
+
+    # Display existing entries
+    effects_dict = st.session_state[f"{key}_dict"]
+
+    if effects_dict:
+        st.write("Current Effects:")
+        for effect_name, effect_value in effects_dict.items():
+            col1, col2, col3 = st.columns([3, 6, 1])
+            with col1:
+                st.write(f"**{effect_name}**")
+            with col2:
+                if isinstance(effect_value, (np.ndarray, list)):
+                    st.write("Time Series Data")
+                else:
+                    st.write(f"Value: {effect_value}")
+            with col3:
+                if st.button("🗑️", key=f"remove_{key}_{effect_name}"):
+                    del st.session_state[f"{key}_dict"][effect_name]
+                    if f"{key}_{effect_name}_value" in st.session_state:
+                        del st.session_state[f"{key}_{effect_name}_value"]
+                    if f"{key}_{effect_name}_series" in st.session_state:
+                        del st.session_state[f"{key}_{effect_name}_series"]
+                    st.rerun()
+
+    # Toggle adding mode
+    add_col1, add_col2 = st.columns([6, 1])
+    with add_col1:
+        st.write("Add a new effect:")
+    with add_col2:
+        if st.button("➕" if not st.session_state[f"{key}_adding"] else "✖️", key=f"{key}_toggle_add"):
+            st.session_state[f"{key}_adding"] = not st.session_state[f"{key}_adding"]
+            st.rerun()
+
+    # Add new entry - not in an expander
+    if st.session_state[f"{key}_adding"]:
+        st.markdown("---")
+        if available_effects:
+            # Filter out effects already added
+            available = [e for e in available_effects if e not in effects_dict]
+            if not available:
+                st.write("All available effects have been added.")
+                st.session_state[f"{key}_adding"] = False
+                st.rerun()
+                return effects_dict
+
+            new_effect = st.selectbox("Select Effect", options=available, key=f"{key}_new_effect")
+        else:
+            new_effect = st.text_input("Effect Name", key=f"{key}_new_effect")
+
+        if new_effect:
+            effect_value = smart_numeric_input(
+                f"Value for {new_effect}",
+                key=f"{key}_{new_effect}",
+                default_value=0.0,
+                timesteps=timesteps
+            )
+
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                pass
+            with col2:
+                if st.button("Add Effect", key=f"{key}_add_effect"):
+                    st.session_state[f"{key}_dict"][new_effect] = effect_value
+                    st.session_state[f"{key}_adding"] = False
+                    st.rerun()
+
+        st.markdown("---")
+
+    return effects_dict
