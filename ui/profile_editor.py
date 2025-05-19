@@ -189,8 +189,11 @@ def smart_numeric_input(label, key, default_value=0.0, description=None, timeste
             index=timesteps
         )
 
+    if f"{key}_import_export_open" not in st.session_state:
+        st.session_state[f"{key}_import_export_open"] = False
+
     # Create UI
-    st.write(f"### {label}")
+    st.write(f"#### {label}")
     if description:
         st.write(description)
 
@@ -231,6 +234,53 @@ def smart_numeric_input(label, key, default_value=0.0, description=None, timeste
                 key=f"{key}_series_editor"
             )
             st.session_state[f"{key}_series"] = series_df
+
+            # Import/Export options - directly in the tab, not in an expander
+            toggle_col1, toggle_col2 = st.columns([4, 1])
+            with toggle_col1:
+                st.write("Import/Export Options:")
+            with toggle_col2:
+                if st.button("📂" if not st.session_state[f"{key}_import_export_open"] else "✖️",
+                             key=f"{key}_toggle_import_export"):
+                    st.session_state[f"{key}_import_export_open"] = not st.session_state[f"{key}_import_export_open"]
+                    st.rerun()
+
+            if st.session_state[f"{key}_import_export_open"]:
+                col1, col2 = st.columns(2)
+                with col1:
+                    csv = series_df.to_csv().encode('utf-8')
+                    st.download_button(
+                        "Download CSV",
+                        data=csv,
+                        file_name=f"{key}_data.csv",
+                        mime="text/csv",
+                        key=f"{key}_download"
+                    )
+
+                with col2:
+                    uploaded_file = st.file_uploader(
+                        "Upload CSV or Excel",
+                        type=["csv", "xlsx", "xls"],
+                        key=f"{key}_upload"
+                    )
+
+                    if uploaded_file is not None:
+                        try:
+                            if uploaded_file.name.endswith('.csv'):
+                                imported_data = pd.read_csv(uploaded_file, index_col=0)
+                            else:
+                                imported_data = pd.read_excel(uploaded_file, index_col=0)
+
+                            # Ensure the imported data has the right column
+                            if "Value" not in imported_data.columns and len(imported_data.columns) > 0:
+                                imported_data = imported_data.rename(columns={imported_data.columns[0]: "Value"})
+
+                            # Update the session state
+                            st.session_state[f"{key}_series"] = imported_data
+                            st.success(f"Loaded data with {len(imported_data)} values")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error importing data: {str(e)}")
 
         with tabs[1]:
             # Chart view
@@ -311,44 +361,6 @@ def smart_numeric_input(label, key, default_value=0.0, description=None, timeste
                     series_df["Value"] = values
                     st.session_state[f"{key}_series"] = series_df
                     st.rerun()
-
-        # Import/Export options in an expander
-        with st.expander("Import/Export Data"):
-            col1, col2 = st.columns(2)
-            with col1:
-                csv = series_df.to_csv().encode('utf-8')
-                st.download_button(
-                    "Download CSV",
-                    data=csv,
-                    file_name=f"{key}_data.csv",
-                    mime="text/csv",
-                    key=f"{key}_download"
-                )
-
-            with col2:
-                uploaded_file = st.file_uploader(
-                    "Upload CSV or Excel",
-                    type=["csv", "xlsx", "xls"],
-                    key=f"{key}_upload"
-                )
-
-                if uploaded_file is not None:
-                    try:
-                        if uploaded_file.name.endswith('.csv'):
-                            imported_data = pd.read_csv(uploaded_file, index_col=0)
-                        else:
-                            imported_data = pd.read_excel(uploaded_file, index_col=0)
-
-                        # Ensure the imported data has the right column
-                        if "Value" not in imported_data.columns and len(imported_data.columns) > 0:
-                            imported_data = imported_data.rename(columns={imported_data.columns[0]: "Value"})
-
-                        # Update the session state
-                        st.session_state[f"{key}_series"] = imported_data
-                        st.success(f"Loaded data with {len(imported_data)} values")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error importing data: {str(e)}")
 
         # Return the array of values
         return series_df["Value"].values
