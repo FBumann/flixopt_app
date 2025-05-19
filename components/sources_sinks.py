@@ -1,8 +1,6 @@
 import streamlit as st
 import flixopt as fx
 import numpy as np
-import plotly.express as px
-import pandas as pd
 
 from utils.session_state import add_element, delete_element
 from .flows import create_flow_ui

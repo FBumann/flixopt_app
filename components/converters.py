@@ -328,12 +328,12 @@ def display_existing_converters():
     cols[2].write("**Actions**")
 
     for i, converter in enumerate(st.session_state.flow_system.components.values()):
-        cols = st.columns([3, 2, 1])
+        cols = st.columns([2, 1, 1])
         cols[0].write(converter.label_full)
 
         # Determine converter type
         converter_type = type(converter).__name__
-        cols[1].write(converter_type)
+        cols[1].write(converter.label_full)
 
         # Action buttons
         if cols[2].button("Delete", key=f"delete_converter_{converter.label_full}"):
@@ -342,19 +342,4 @@ def display_existing_converters():
 
         # Show details in an expander
         with st.expander(f"Details: {converter.label}"):
-            st.write(f"**Type:** {converter_type}")
-
-            # Show flows
-            if hasattr(converter, 'flow'):
-                st.write("**Flows:**")
-                for flow in converter.flow:
-                    flow_direction = "Input" if hasattr(flow, 'is_input') and flow.is_input else "Output"
-                    st.write(f"- {flow.label}: {flow_direction}, Size: {flow.size} kW, Bus: {flow.bus}")
-
-            # Show efficiencies
-            if hasattr(converter, 'eta'):
-                st.write(f"**Efficiency:** {converter.eta:.2f}")
-            if hasattr(converter, 'eta_el'):
-                st.write(f"**Electrical Efficiency:** {converter.eta_el:.2f}")
-            if hasattr(converter, 'eta_th'):
-                st.write(f"**Thermal Efficiency:** {converter.eta_th:.2f}")
+            st.json(converter.to_json())

@@ -54,11 +54,10 @@ def display_existing_buses():
     cols[2].write("**Actions**")
 
     for i, bus in enumerate(st.session_state.flow_system.buses.values()):
-        cols = st.columns([3, 1, 1])
-        cols[0].write(bus.label_full)
-        cols[1].write(f"{bus.excess_penalty_per_flow_hour:.1e}")
+        cols = st.columns([2, 1, 1])
+        cols[0].json(bus.to_json())
 
         # Action buttons
-        if cols[2].button("Delete", key=f"delete_bus_{bus.label_full}"):
+        if cols[1].button("Delete", key=f"delete_bus_{bus.label_full}"):
             delete_element(bus.label_full, 'buses')
             st.rerun()

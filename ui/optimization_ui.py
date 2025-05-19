@@ -140,61 +140,17 @@ def render_optimization_tab():
 
     # Run optimization button
     if st.button("Run Optimization", type="primary", use_container_width=True):
-        # Validate system first
-        from utils.session_state import validate_system
-        valid, validation_issues = validate_system()
-
-        if not valid:
-            st.error("Cannot run optimization due to the following issues:")
-            for issue in validation_issues:
-                st.warning(f"⚠️ {issue}")
-            return
-
         try:
             with st.spinner("Running optimization..."):
                 # Create calculation
                 calculation = fx.FullCalculation('streamlit model', st.session_state.flow_system)
-
-                # Configure model settings
-                model_config = {}
-                if not on_off_modeling:
-                    model_config['disable_on_off_modeling'] = True
-
-                if not investment_modeling:
-                    model_config['disable_investment_optimization'] = True
-
-                # Do modeling with appropriate configuration
-                calculation.do_modeling(**model_config)
+                calculation.do_modeling()
 
                 # Configure solver based on selection
                 if solver_type == "HiGHS":
                     solver = fx.solvers.HighsSolver(gap, max_time)
-                elif solver_type == "GLPK":
-                    solver = fx.solvers.GLPKSolver(gap, max_time)
-                elif solver_type == "CPLEX":
-                    solver = fx.solvers.CPLEXSolver(gap, max_time)
                 elif solver_type == "Gurobi":
                     solver = fx.solvers.GurobiSolver(gap, max_time)
-
-                # Configure advanced solver settings
-                if num_threads is not None:
-                    solver.num_threads = num_threads
-
-                if time_limit_for_preprocessing is not None:
-                    solver.time_limit_for_preprocessing = time_limit_for_preprocessing
-
-                if presolve != "Default":
-                    solver.presolve = (presolve == "On")
-
-                # Set log level
-                log_levels = {
-                    "Error": 0,
-                    "Warning": 1,
-                    "Info": 2,
-                    "Debug": 3
-                }
-                solver.log_level = log_levels.get(log_level, 2)
-
                 # Solve the model
                 calculation.solve(solver)
 

@@ -8,7 +8,7 @@ energy system models using the flixopt framework.
 import streamlit as st
 
 # Import modules
-from utils.session_state import initialize_session_state, validate_system, get_component_counts
+from utils.session_state import initialize_session_state
 import ui.config_ui as config_ui
 import ui.components_ui as components_ui
 import ui.optimization_ui as optimization_ui
