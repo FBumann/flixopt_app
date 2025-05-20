@@ -4,10 +4,7 @@ version = "0.1.0"
 description = "A STreamlit app for the usage of flixopt"
 requires-python = ">=3.11"
 dependencies = [
-    "flixopt==2.1.1",
-    "numpy>=2.2.6",
-    "pandas>=2.2.3",
-    "plotly>=6.1.0",
+    "flixopt[full]>=2.1.1",
     "streamlit>=1.45.1",
     "watchdog>=6.0.0",
 ]
