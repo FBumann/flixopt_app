@@ -106,38 +106,15 @@ def create_sink_ui():
                     sink=fx.Flow(**flow_params),
                 )
 
-                # Display success message
-                st.success(f"Successfully created Sink '{sink_name}' with Flow '{flow_params['label']}'")
+                add_element(sink, 'sinks')
 
-                # Store in session state
-                if "sinks" not in st.session_state:
-                    st.session_state.sinks = {}
-
-                st.session_state.sinks[sink_name] = sink
-
-                # Display representation
+                # Display representation of the created objects
                 with st.expander("Created Sink Details", expanded=True):
                     st.write("##### Sink")
-                    st.write(f"Label: {sink.label}")
-                    st.write(f"Inputs: {[i.label for i in sink.inputs]}")
-                    if "meta_data" in flow_params:
-                        st.write(f"Meta Data: {flow_params['meta_data']}")
-
-                    st.write("##### Flow")
-                    for key, value in flow_params.items():
-                        if key not in ["meta_data"]:
-                            if isinstance(value, (np.ndarray, list)):
-                                st.write(f"{key}: Array with {len(value)} values")
-                            else:
-                                st.write(f"{key}: {value}")
-
-                    if on_off_params:
-                        st.write("on_off_parameters:")
-                        for k, v in on_off_params.items():
-                            st.write(f"  {k}: {v}")
+                    st.json(sink.to_json())
 
             except Exception as e:
-                st.error(f"Error creating Sink: {str(e)}")
+                st.error(f"Error creating Source: {str(e)}")
 
 def display_existing_sources_sinks():
     """Display the list of existing sources and sinks"""

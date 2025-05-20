@@ -78,7 +78,7 @@ if app_mode == "Model Builder":
 
     # Results tab
     with tabs[3]:
-        st.write("Results tab is not implemented yet.")
+        results_ui.render_results_ui()
 
     # Advanced Analysis tab
     with tabs[4]:
